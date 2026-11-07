@@ -1,0 +1,42 @@
+name: Environment API canonicalization control
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  colon:
+    runs-on: ubuntu-latest
+    environment: 'Api:Prod'
+    steps:
+      - name: Verify exact protected object bindings
+        env:
+          SECRET_MARKER: ${{ secrets.SECRET_MARKER }}
+          VARIABLE_MARKER: ${{ vars.BOUNDARY_MARKER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret_digest="$(printf '%s' "$SECRET_MARKER" | sha256sum | cut -d' ' -f1)"
+          variable_digest="$(printf '%s' "$VARIABLE_MARKER" | sha256sum | cut -d' ' -f1)"
+          test "$secret_digest" = 'b2ae44cccb8d9346f9081cabf5e697e1e5a72482540d3ebbff9eca5ae65a9982'
+          test "$variable_digest" = 'cb5607d15da4c85ceccac2c17df855dfeec0bab3cb5634b99695a75368643984'
+          printf 'environment=Api:Prod secret_sha256=%s variable_sha256=%s exact_match=true\n' "$secret_digest" "$variable_digest"
+
+  percent:
+    runs-on: ubuntu-latest
+    environment: 'Api%3AProd'
+    steps:
+      - name: Verify exact unprotected object bindings
+        env:
+          SECRET_MARKER: ${{ secrets.SECRET_MARKER }}
+          VARIABLE_MARKER: ${{ vars.BOUNDARY_MARKER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret_digest="$(printf '%s' "$SECRET_MARKER" | sha256sum | cut -d' ' -f1)"
+          variable_digest="$(printf '%s' "$VARIABLE_MARKER" | sha256sum | cut -d' ' -f1)"
+          test "$secret_digest" = '33e464bb15585add971224287ad905be364778fa4aaa34ab610a01faabeec3c2'
+          test "$variable_digest" = '1e124e8ba2179b08e0ed5778d413fdaa730ace9fb9d9ba6d64574c1c24aa66f8'
+          printf 'environment=Api%%3AProd secret_sha256=%s variable_sha256=%s exact_match=true\n' "$secret_digest" "$variable_digest"
